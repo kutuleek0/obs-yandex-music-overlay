@@ -1,4 +1,4 @@
-!(OBS Music Overlay (Яндекс Музыка))[obs-yandex-music-overlay/Mem.png]
+![OBS Yandex Music Overlay](obs-yandex-music-overlay/Mem.png"OBS Yandex Music Overlay")
 
 Простой оверлей «Сейчас играет» для OBS. Работает из коробки на Windows (десктоп‑приложение Яндекс Музыки) и как браузерный источник в OBS.
 
@@ -26,6 +26,7 @@
 
 Поддержка
 Если что-то не работает — создайте issue с логом консоли и скриншотом.
+
 
 
 
