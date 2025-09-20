@@ -12,7 +12,7 @@
    - Параметр w — ширина плашки в пикселях (минимум 300)
 
 Быстрый старт (Легкий) №2
-   [>Release<](https://github.com/kutuleek0/obs-yandex-music-overlay/releases/tag/Release-1.0)
+   -[>Release<](https://github.com/kutuleek0/obs-yandex-music-overlay/releases/tag/Release-1.0)
    
 Настройка
 - Только Яндекс Музыка: по умолчанию фильтр по AUMID содержит «yandex» и «music». Можно переопределить переменной YM_ALLOW.
@@ -26,6 +26,7 @@
 
 Поддержка
 Если что-то не работает — создайте issue с логом консоли и скриншотом.
+
 
 
 
