@@ -1,8 +1,8 @@
-OBS Music Overlay (Яндекс Музыка)
+!(OBS Music Overlay (Яндекс Музыка))[obs-yandex-music-overlay/Mem.png]
 
 Простой оверлей «Сейчас играет» для OBS. Работает из коробки на Windows (десктоп‑приложение Яндекс Музыки) и как браузерный источник в OBS.
 
-Быстрый старт (Windows)
+Быстрый старт (Крутой) №1
 1) Скачайте релиз для Windows (папка dist/win-x64) или соберите сами:
    - Установите Node.js 18+ и .NET SDK 8
    - npm install
@@ -11,9 +11,9 @@ OBS Music Overlay (Яндекс Музыка)
 3) В OBS добавьте Browser Source и укажите URL: http://localhost:3000/?w=560
    - Параметр w — ширина плашки в пикселях (минимум 300)
 
-Linux / macOS
-- Сервер можно упаковать (npm run build:linux / build:macos), но получения трека нет. На Linux можно интегрировать playerctl — при запросе добавьте issue.
-
+Быстрый старт (Легкий) №2
+   [>Release<](https://github.com/kutuleek0/obs-yandex-music-overlay/releases/tag/Release-1.0)
+   
 Настройка
 - Только Яндекс Музыка: по умолчанию фильтр по AUMID содержит «yandex» и «music». Можно переопределить переменной YM_ALLOW.
 - Ширина: параметр URL w=..., например ?w=420
@@ -26,5 +26,6 @@ Linux / macOS
 
 Поддержка
 Если что-то не работает — создайте issue с логом консоли и скриншотом.
+
 
 
