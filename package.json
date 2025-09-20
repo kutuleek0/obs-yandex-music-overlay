@@ -1,0 +1,45 @@
+{
+  "name": "obs-music-overlay",
+  "version": "1.0.0",
+  "description": "OBS браузерный оверлей для вывода \"Сейчас играет\" из Яндекс Музыки (SMTC)",
+  "type": "commonjs",
+  "main": "src/server/index.js",
+  "bin": "src/server/index.js",
+  "scripts": {
+    "start": "node src/server/index.js",
+    "dev": "node src/server/index.js",
+    "build:helper": "dotnet build smtc-helper/smtc-helper.csproj -c Release",
+    "build:helper:win": "dotnet publish smtc-helper/smtc-helper.csproj -c Release -r win-x64 -p:PublishSingleFile=true -p:PublishTrimmed=true -p:SelfContained=true -o dist/win-x64",
+    "build:server:win": "pkg . --targets node18-win-x64 --output dist/win-x64/obs-music-overlay.exe",
+    "build:server:linux": "pkg . --targets node18-linux-x64 --output dist/linux-x64/obs-music-overlay",
+    "build:server:macos": "pkg . --targets node18-macos-x64 --output dist/macos-x64/obs-music-overlay",
+    "build:copy-public": "node scripts/copy-public.js",
+    "build:win": "npm run build:helper:win && npm run build:server:win && npm run build:copy-public",
+    "build:tray:win": "dotnet publish tray-host/TrayHost.csproj -c Release -r win-x64 -p:PublishSingleFile=true -p:SelfContained=true -o dist/win-x64",
+    "build:linux": "npm run build:server:linux && npm run build:copy-public",
+    "build:macos": "npm run build:server:macos && npm run build:copy-public",
+    "postinstall": "echo 'Windows: используйте npm run build:win для упаковки. Linux: требуется playerctl.'"
+  },
+  "keywords": [
+    "obs",
+    "overlay",
+    "yandex-music",
+    "now-playing",
+    "smtc"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "express": "^5.1.0",
+    "ws": "^8.18.3"
+  },
+  "devDependencies": {
+    "pkg": "^5.8.1"
+  },
+  "pkg": {
+    "assets": [
+      "public/**/*"
+    ]
+  }
+}

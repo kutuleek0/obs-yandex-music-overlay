@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Сейчас играет</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: rgba(10, 10, 14, 0.85);
+      --glass: rgba(255, 255, 255, 0.18);
+      --text: #ffffff;
+      --muted: #b8b8c2;
+      --accent: #ffcc00;
+      --radius: 14px;
+      --w: 560px;
+      --art: 64px;
+      --title-size: 20px;
+      --artist-size: 14px;
+      --pad-x: 16px;
+      --pad-y: 12px;
+      --ticker-fade: 16px;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; background: transparent; }
+    body { font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color: var(--text); }
+    .overlay { display: inline-flex; align-items: center; gap: 14px; padding: var(--pad-y) var(--pad-x); background: var(--bg); border-radius: var(--radius); backdrop-filter: blur(10px); border: 1px solid var(--glass); width: var(--w); min-width: 300px; }
+    .art { width: var(--art); height: var(--art); border-radius: 10px; background: #222; overflow: hidden; box-shadow: 0 8px 24px rgba(0,0,0,0.35); flex: 0 0 auto; }
+    .art img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .texts { display: flex; flex-direction: column; min-width: 0; flex: 1 1 auto; }
+    .label { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--accent); opacity: 0.9; margin-bottom: 4px; }
+    .title { font-size: var(--title-size); font-weight: 600; line-height: 1.2; }
+    .artist { font-size: var(--artist-size); color: var(--muted); }
+    .ticker { position: relative; overflow: hidden; white-space: nowrap; min-height: 1.35em; }
+    .ticker.single { text-overflow: ellipsis; }
+    .ticker > span { display: inline-block; }
+    .marquee { display: inline-flex; align-items: center; gap: 40px; will-change: transform; }
+    .ticker span { display: inline-block; vertical-align: middle; }
+    .marquee { display: inline-flex; align-items: center; gap: 40px; will-change: transform; }
+    .progress { position: relative; height: 4px; background: rgba(255,255,255,0.25); border-radius: 999px; margin-top: 10px; overflow: hidden; }
+    .progress > div { position: absolute; left: 0; top: 0; bottom: 0; width: 0%; background: linear-gradient(90deg, #ffcc00, #ffa600); transition: width 0.3s ease; }
+    .hidden { opacity: 0; transform: translateY(8px); filter: blur(2px); transition: all 300ms ease; }
+    .visible { opacity: 1; transform: translateY(0); filter: blur(0); }
+
+    /* Компактная компоновка при малой ширине */
+    .overlay.compact { --art: 52px; --title-size: 18px; --artist-size: 12px; --pad-x: 14px; --pad-y: 10px; }
+  </style>
+</head>
+<body>
+  <div class="overlay hidden" id="overlay">
+    <div class="art"><img id="art" alt="Обложка" /></div>
+    <div class="texts">
+      <div class="label">Сейчас играет</div>
+      <div class="title ticker" id="titleWrap"><span>—</span></div>
+      <div class="artist ticker" id="artistWrap"><span>—</span></div>
+      <div class="progress"><div id="bar"></div></div>
+    </div>
+  </div>
+
+  <script>
+    const wsUrl = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws';
+    const artEl = document.getElementById('art');
+    const titleWrap = document.getElementById('titleWrap');
+    const artistWrap = document.getElementById('artistWrap');
+    const barEl = document.getElementById('bar');
+    const overlayEl = document.getElementById('overlay');
+
+    let duration = 0;
+    let lastTick = Date.now();
+    let position = 0;
+    let playing = false;
+
+    // Конфиг через URL (?w=...), автонастройка размеров под ширину
+    (function configureByUrl(){
+      const p = new URLSearchParams(location.search);
+      let w = parseInt(p.get('w') || '0', 10);
+      if (!Number.isFinite(w) || w <= 0) w = 560;
+      if (w < 300) w = 300; // минимальная ширина, чтобы ничего не обрезалось визуально
+      document.documentElement.style.setProperty('--w', w + 'px');
+      if (w <= 360) overlayEl.classList.add('compact');
+      // мягкое масштабирование арта и шрифтов
+      const art = Math.round(Math.max(48, Math.min(96, w * 0.12)));
+      const titleSize = Math.max(16, Math.min(24, w * 0.036));
+      const artistSize = Math.max(12, Math.min(16, w * 0.024));
+      document.documentElement.style.setProperty('--art', art + 'px');
+      document.documentElement.style.setProperty('--title-size', titleSize + 'px');
+      document.documentElement.style.setProperty('--artist-size', artistSize + 'px');
+    })();
+
+    function applyState(s) {
+      const data = s.data ? s.data : s;
+      if (data.state === 'NotYandex' || data.state === 'NoSession') {
+        overlayEl.classList.remove('visible');
+        overlayEl.classList.add('hidden');
+        return;
+      }
+      applyTicker(titleWrap, data.title || '—');
+      applyTicker(artistWrap, data.artist || '—');
+      if (data.albumArtDataUrl) {
+        artEl.src = data.albumArtDataUrl;
+      }
+      duration = data.durationSeconds || 0;
+      position = data.positionSeconds || 0;
+      playing = data.state === 'Playing';
+      overlayEl.classList.remove('hidden');
+      overlayEl.classList.add('visible');
+      updateBar();
+    }
+
+    // Бегущая строка для длинного текста без изменения размера плашки
+    function applyTicker(wrapper, text) {
+      // Сбрасываем предыдущее состояние
+      wrapper.innerHTML = '';
+
+      const one = document.createElement('span');
+      one.textContent = text;
+      wrapper.appendChild(one);
+
+      // Дадим рендеру завершиться, затем проверим переполнение
+      requestAnimationFrame(() => {
+        const needsMarquee = one.scrollWidth > wrapper.clientWidth + 1;
+        if (!needsMarquee) {
+          // Гарантируем устойчивую высоту и рендер без сдвигов
+          wrapper.classList.add('single');
+          return;
+        }
+        wrapper.classList.remove('single');
+
+        // Плавный бесшовный скролл без рывка на rAF: дублируем контент и двигаем ленту
+        wrapper.innerHTML = '';
+        const track = document.createElement('div');
+        track.className = 'marquee';
+        const sep = '   ·   ';
+        const a = document.createElement('span'); a.textContent = text + sep;
+        const b = document.createElement('span'); b.textContent = text + sep;
+        track.appendChild(a); track.appendChild(b);
+        wrapper.appendChild(track);
+
+        const speed = 60; // px/с
+        // Стартуем с малого ненулевого оффсета для субпиксельной плавности
+        let offset = 0.5;
+        let last = performance.now();
+
+        // Останавливаем предыдущий цикл, если был
+        if (wrapper._rafId) cancelAnimationFrame(wrapper._rafId);
+
+        function tick(now) {
+          const dt = Math.min(0.05, (now - last) / 1000); // кап, чтобы не было прыжков при дропе кадров
+          last = now;
+          offset += speed * dt;
+          // ширина одной копии + фактический gap контейнера
+          const cs = getComputedStyle(track);
+          const gap = parseFloat(cs.columnGap || cs.gap || '40') || 40; // дефолт для .marquee
+          const oneWidth = a.getBoundingClientRect().width;
+          const cycle = oneWidth + gap;
+          while (offset >= cycle) offset -= cycle; // бесшовный цикл без скачка
+          track.style.transform = `translate3d(${-offset}px,0,0)`;
+          wrapper._rafId = requestAnimationFrame(tick);
+        }
+        wrapper._rafId = requestAnimationFrame(tick);
+      });
+    }
+
+    function updateBar() {
+      const pct = duration > 0 ? Math.min(100, (position / duration) * 100) : 0;
+      barEl.style.width = pct + '%';
+    }
+
+    setInterval(() => {
+      const now = Date.now();
+      const dt = (now - lastTick) / 1000;
+      lastTick = now;
+      if (playing) {
+        position += dt;
+        updateBar();
+      }
+    }, 250);
+
+    function connect() {
+      const ws = new WebSocket(wsUrl);
+      ws.onopen = () => {};
+      ws.onmessage = (ev) => {
+        try {
+          const msg = JSON.parse(ev.data);
+          if (msg.type === 'now_playing') applyState(msg);
+        } catch (e) {}
+      };
+      ws.onclose = () => setTimeout(connect, 1500);
+      ws.onerror = () => ws.close();
+    }
+
+    fetch('/api/now').then(r => r.json()).then(applyState).catch(() => {});
+    connect();
+  </script>
+</body>
+</html>
+
+
